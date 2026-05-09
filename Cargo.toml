@@ -1,0 +1,8 @@
+[package]
+name = "logic_gate_core"
+version = "0.1.0"
+edition = "2021"
+description = "Deterministik Bilişsel Durum Makinesi (Sistem 2)"
+
+[dependencies]
+open_cognitive_protocol = { path = "../protocol" }
