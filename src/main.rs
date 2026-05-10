@@ -28,35 +28,37 @@ fn main() -> std::io::Result<()> {
 
     loop {
         println!("\n[DÜŞÜNCE ADIMI: {}] Durum: {:?}", agent.step_counter, agent.current_state);
-        let mut signal = CognitiveSignal::new();
         
-        // Veriyi taşıma çantasına (payload) koy (Sadece ilk bayta yazıyoruz)
-        signal.payload[0] = user_input;
-        
+        // YENİ: Bellekteki mevcut durumu (işçilerin bıraktığı veriyi) Oku! Ezme!
+        let mut signal = bus.read_signal();
         let mut wait_for_workers = false;
 
         match agent.current_state {
             CognitiveState::Project => {
                 println!("[MASTER] Nöral Motor'a 'Forward Pass' emri gönderildi.");
+                signal.payload[0] = user_input; // Sadece görev başlarken çantaya veri koy
                 signal.command_type = CMD_FORWARD_PASS;
                 wait_for_workers = true;
+                bus.write_signal(&signal);
             },
             CognitiveState::Act => {
                 println!("[MASTER] Sandbox'a veri ({}) gönderiliyor...", user_input);
                 signal.command_type = CMD_EXECUTE_TOOL;
                 wait_for_workers = true;
+                bus.write_signal(&signal);
             },
             CognitiveState::Reflect => {
-                // YENİ: Sandbox'ın bellekte bıraktığı sonucu oku
-                let current_signal = bus.read_signal();
-                let tool_result = current_signal.payload[0];
+                // İşçinin (Sandbox'ın) belleğe yazdığı sonucu artık güvenle okuyabiliriz
+                let tool_result = signal.payload[0];
                 println!("[MASTER] Öz-Denetim (Reflect): Sandbox'ın ürettiği sonuç = {}", tool_result);
                 signal.command_type = CMD_IDLE;
+                bus.write_signal(&signal);
             },
-            _ => { signal.command_type = CMD_IDLE; }
+            _ => { 
+                signal.command_type = CMD_IDLE; 
+                bus.write_signal(&signal);
+            }
         }
-
-        bus.write_signal(&signal);
 
         if wait_for_workers {
             loop {
